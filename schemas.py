@@ -1,48 +1,37 @@
 """
-Database Schemas
+Database Schemas for Hospital Management System (Auth module)
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
+Each Pydantic model corresponds to a MongoDB collection (class name lowercased).
 
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+- Patient -> "patient"
+- otpcode -> "otpcode"
+- session -> "session"
+
+These are used for validation and also help tooling introspect your data model.
 """
-
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
+from datetime import datetime
 
-# Example schemas (replace with your own):
+class Patient(BaseModel):
+    full_name: str = Field(..., description="Full name of the patient")
+    email: EmailStr = Field(..., description="Unique email for login and notifications")
+    phone: str = Field(..., description="Contact number used for OTP login (E.164 preferred)")
+    password_hash: str = Field(..., description="Hashed password (server-generated)")
+    salt: str = Field(..., description="Password salt (server-generated)")
+    role: str = Field("patient", description="User role, defaults to patient")
+    is_active: bool = Field(True, description="Whether the account is active")
 
-class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+class Otpcode(BaseModel):
+    channel: str = Field(..., description="email or phone")
+    target: str = Field(..., description="email address or phone number where code was sent")
+    code: str = Field(..., description="6-digit OTP code")
+    purpose: str = Field(..., description="login or reset")
+    expires_at: datetime = Field(..., description="Expiration timestamp (UTC)")
+    consumed: bool = Field(False, description="Whether this code has been used")
 
-class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
-
-# Add your own schemas here:
-# --------------------------------------------------
-
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class Session(BaseModel):
+    user_id: str = Field(..., description="Associated patient _id as string")
+    token: str = Field(..., description="Opaque session token stored client-side")
+    expires_at: datetime = Field(..., description="Session expiry")
+    active: bool = Field(True, description="Whether session is active")
